@@ -1,0 +1,258 @@
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .loader {
+        width: 16px;
+        height: 16px;
+        margin: auto;
+        border-radius: 50%;
+        background-color: #fff;
+        box-shadow: 32px 0 #fff, -32px 0 #fff;
+        position: relative;
+        animation: flash 0.5s ease-out infinite alternate;
+        }
+
+        @keyframes flash {
+            0% {
+                background-color: #34495e;
+                box-shadow: 32px 0 #FFF2, -32px 0 #FFF;
+            }
+            50% {
+                background-color: #FFF;
+                box-shadow: 32px 0 #34495e, -32px 0 #34495e;
+            }
+            100% {
+                background-color: #34495e;
+                box-shadow: 32px 0 #FFF, -32px 0 #34495e;
+            }
+        }
+            
+        body {
+            background-color: #F7F7F7;
+            color: #22313f;
+            font-size: large;
+            padding: 25px;
+            font-family: Verdana, sans-serif;
+        }
+
+        INPUT {
+            height: 40px;
+            padding: 5px;
+            width: 100%;
+            border: 1px solid #B2C5C0;
+            font-size: larger;
+        }
+
+        .content {
+            width: 100%;
+            display: block;
+        }
+
+        button {
+            width: 200px;
+            height: 40px;
+            color: white;
+            border: 0px solid white;
+            font-size: large;
+            cursor:pointer;
+            background-color: #D74F45;
+        }
+
+        table, th, td {
+            border: 1px solid #B2C5C0;
+            padding: 10px;
+        }
+        table {
+            width: 500px;
+            margin: auto;
+            border-collapse: collapse;
+        }
+
+        input[type=checkbox]{
+            height: 0;
+            width: 0;
+            visibility: hidden;
+        }
+
+        label {
+            cursor: pointer;
+            text-indent: -9999px;
+            width: 70px;
+            height: 30px;
+            margin-bottom: 15px;
+            background: grey;
+            display: block;
+            border-radius: 100px;
+            position: relative;
+        }
+
+        label:after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+
+        input:checked + label {
+            background: #34495e;
+        }
+
+        input:checked + label:after {
+            left: calc(100% - 5px);
+            transform: translateX(-100%);
+        }
+
+    </style>
+    <script>
+        function onSubmit() {
+            ssid = document.getElementById("ssid").value;
+            password = document.getElementById("password").value;
+            ip = document.getElementById("ip").value;
+            gw = document.getElementById("gw").value;
+            remote_server = document.getElementById("remote_server").value;
+            dhcp = document.getElementById("dhcp").checked;
+            active = document.getElementById("active").checked;
+            ipregex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            if (!dhcp)
+            {
+                if (!(ipregex.test(ip))) {
+                    alert("Invalid IP address");
+                    return;
+                }
+                if (!(ipregex.test(gw))) {
+                    alert("Invalid IP address");
+                    return;
+                }
+            }
+            if (active)
+            {
+                if (!(ipregex.test(remote_server))) {
+                    alert("Invalid IP address");
+                    return;
+                }
+            }
+
+            let payload = {
+                wifi: {
+                    ssid: ssid,
+                    password: password
+                },
+                config: {
+                    ip: ip,
+                    gw: gw,
+                    remote_server: remote_server,
+                    dhcp: dhcp,
+                    active: active
+                }
+            };
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/data");
+            xhr.send(JSON.stringify(payload));
+            setTimeout(() => window.location = "http://" + ip + "/", 1000);
+
+        }
+
+        function wifiScan() {
+            const xhr = new XMLHttpRequest();
+
+            xhr.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    el = document.getElementById("scanlist");
+                    let content = "<tr><th>AP list</th></tr>";
+                    content+=JSON.parse(xhr.responseText).ap.map(x => "<tr><td>" + x + "</td></tr>").reduce((acc, cur) => acc + cur);
+                    el.innerHTML = content;
+                }
+            }
+            xhr.open("GET", "/ap");
+            xhr.send();
+        }
+
+        function fetchConfig() {
+            const xhr = new XMLHttpRequest();
+
+            xhr.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    config = JSON.parse(xhr.responseText)
+                    document.getElementById("ssid").value = config.wifi.ssid;
+                    document.getElementById("ip").value=config.config.ip;
+                    document.getElementById("gw").value=config.config.gw;
+                    document.getElementById("remote_server").value=config.config.remote_server;
+                    document.getElementById("dhcp").checked=config.config.dhcp;
+                    document.getElementById("active").checked=config.config.active;
+                }
+            }
+            xhr.open("GET", "/data");
+            xhr.send();
+        }
+
+        function init() {
+            wifiScan();
+            fetchConfig();
+        }
+
+        function on_dhcp_change(ev) {
+            el = document.getElementById("static_config");
+            if (ev.checked) {
+                el.style.display = "none";
+            } else {
+                el.style.display = "block";
+            }
+        }
+
+        function on_active_change(ev) {
+            el = document.getElementById("active_mode");
+            if (ev.checked) {
+                el.style.display = "block";
+            } else {
+                el.style.display = "none";
+            }
+        }
+    </script>
+</head>
+
+<body onload="init()">
+    <div class="content">
+        <div>
+            <table id="scanlist">
+                <tr>
+                    <th>AP list</th>
+                </tr>
+                <tr>
+                    <td><div class="loader"></div></td>
+                </tr>
+            </table>
+
+        </div>
+        <br/>
+        <br/>
+        <br/>
+        SSID
+        <input id="ssid" value="" /><br /><br />
+        Password
+        <input id="password" value="" /><br /><br />
+        Enable DHCP
+        <input type="checkbox" id="dhcp" onchange="on_dhcp_change(this)"/><label for="dhcp">DHCP</label>
+        <div id="static_config">
+            Static IP
+            <input id="ip" value="" /><br /><br />
+            Gateway
+            <input id="gw" value="" /><br /><br />
+        </div>
+        Enable Active mode
+        <input type="checkbox" id="active" onchange="on_active_change(this)"/><label for="active">active</label>
+        <div id="active_mode" style="display:none">
+            Remote server
+            <input id="remote_server" value="" /><br /><br />
+        </div>
+        <button onclick="onSubmit()">SUBMIT</button>
+    </div>
+</body>
+
+</html>
