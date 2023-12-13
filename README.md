@@ -1,15 +1,6 @@
 # TODO:  
-    prov
-        when scanning, the whole thing blocks. And I cant even ping anymore
-    on webserver_stop, must delete the async workers
-
     add websocket in server
     Use http async handlers
-    add websocket client
-    
-    AP list not showing up, and old config either
-        Should be fixed now
-
     outgoing websocket connection
     webpage
         implement all API calls

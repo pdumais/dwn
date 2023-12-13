@@ -1,18 +1,12 @@
 #include "http_server.h"
 #include <esp_log.h>
 #include "common.h"
+#include "taskpool.h"
 
 static httpd_handle_t server = NULL;
 static const char *TAG = "http_server_c";
 
-static QueueHandle_t async_req_queue;
-static SemaphoreHandle_t worker_ready_count;
-static TaskHandle_t worker_handles[MAX_ASYNC_REQUESTS];
 
-typedef struct {
-    httpd_req_t* req;
-    httpd_req_handler_t handler;
-} httpd_async_req_t;
 
 httpd_handle_t get_webserver()
 {
@@ -62,9 +56,23 @@ void stop_webserver()
 {
     if (server)
     {
+        stop_pool();
         /* Stop the httpd server */
         httpd_stop(server);
     }
+}
+
+struct async_http_handler_t {
+    httpd_req_t* req;
+    httpd_req_handler_t handler;
+};
+
+esp_err_t http_async_handler(async_http_handler_t *arg)
+{
+    arg->handler(arg->req);
+    httpd_req_async_handler_complete(arg->req);
+    free(arg);
+   
 }
 
 esp_err_t submit_async_req(httpd_req_t *req, httpd_req_handler_t handler)
@@ -73,21 +81,11 @@ esp_err_t submit_async_req(httpd_req_t *req, httpd_req_handler_t handler)
     esp_err_t err = httpd_req_async_handler_begin(req, &copy);
     if (err != ESP_OK) return err;
 
-    httpd_async_req_t async_req = {
-        .req = copy,
-        .handler = handler,
-    };
+    async_http_handler_t *ah = malloc(sizeof(async_http_handler_t));
+    ah->req = req;
+    ah->handler = handler;
 
-    int ticks = 0;
-
-    if (xSemaphoreTake(worker_ready_count, ticks) == false) {
-        ESP_LOGE(TAG, "No workers are available");
-        httpd_req_async_handler_complete(copy); // cleanup
-        return ESP_FAIL;
-    }
-
-    if (xQueueSend(async_req_queue, &async_req, pdMS_TO_TICKS(100)) == false) {
-        ESP_LOGE(TAG, "worker queue is full");
+    if (schedule_task(http_async_handler, ah) != ESP_OK) {
         httpd_req_async_handler_complete(copy); // cleanup
         return ESP_FAIL;
     }
@@ -95,41 +93,12 @@ esp_err_t submit_async_req(httpd_req_t *req, httpd_req_handler_t handler)
     return ESP_OK;
 }
 
-static void async_req_worker_task(void *p)
-{
-    ESP_LOGI(TAG, "starting async req task worker");
 
-    while (true) {
-        xSemaphoreGive(worker_ready_count);
-
-        httpd_async_req_t async_req;
-        if (xQueueReceive(async_req_queue, &async_req, 10)) {
-            ESP_LOGI(TAG, "invoking %s", async_req.req->uri);
-            async_req.handler(async_req.req);
-            httpd_req_async_handler_complete(async_req.req);
-        }
-    }
-
-    ESP_LOGW(TAG, "worker stopped");
-    vTaskDelete(NULL);
-}
-
-static void start_async_req_workers(void)
-{
-    worker_ready_count = xSemaphoreCreateCounting(MAX_ASYNC_REQUESTS, 0);
-    async_req_queue = xQueueCreate(1, sizeof(httpd_async_req_t));
-
-    for (int i = 0; i < MAX_ASYNC_REQUESTS; i++) 
-    {
-        xTaskCreate(async_req_worker_task, "async_req_worker",4096, 0 , 5, &worker_handles[i]);
-    }
-//TODO: must also delete those tasks
-}
 
 
 void start_webserver()
 {
-    start_async_req_workers();
+    start_pool();
 
     /* Generate default configuration */
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();

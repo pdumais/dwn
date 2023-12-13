@@ -18,17 +18,10 @@ typedef enum
 } http_prov_event_type_t;
 
 ESP_EVENT_DEFINE_BASE(PROV_EVENT);
-const int SCAN_DONE_EVENT = BIT0;
-static EventGroupHandle_t scan_event_group;
 
 static const char *TAG = "provision_c";
 static httpd_handle_t server = NULL;
 static wifi_config_t wifi_config = {0};
-
-static void send_str_chunk(httpd_req_t *req, const char *str)
-{
-    httpd_resp_send_chunk(req, str, strlen(str));
-}
 
 static esp_err_t prov_get_handler(httpd_req_t *req)
 {
@@ -106,50 +99,6 @@ static esp_err_t prov_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static esp_err_t async_prov_get_ap_handler(httpd_req_t *req)
-{
-    uint16_t number = DEFAULT_SCAN_LIST_SIZE;
-    wifi_ap_record_t ap_info[DEFAULT_SCAN_LIST_SIZE];
-    wifi_scan_config_t scan_config = {
-        .ssid = 0,
-        .bssid = 0,
-        .channel = 0,
-        .show_hidden = true
-    };
-
-    ESP_LOGI(TAG, "Starting AP scan");
-    esp_wifi_scan_start(&scan_config, false);
-    xEventGroupClearBits(scan_event_group, SCAN_DONE_EVENT);
-    xEventGroupWaitBits(scan_event_group, SCAN_DONE_EVENT, false, true, portMAX_DELAY);
-
-    ESP_LOGI(TAG, "AP scan Done");
-
-    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
-    
-    cJSON *root = cJSON_CreateObject();
-    cJSON *applist = cJSON_CreateArray();
-
-    ESP_LOGI(TAG, "%i AP found", number);
-    for (int i = 0; i < number; i++)
-    {
-        cJSON_AddItemToArray(applist, cJSON_CreateString((char *)ap_info[i].ssid));
-    }
-
-    cJSON_AddItemToObject(root, "ap", applist);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, cJSON_Print(root), HTTPD_RESP_USE_STRLEN);
-    cJSON_Delete(root);
-    ESP_LOGI(TAG, "End AP response");
-
-    return ESP_OK;
-}
-
-static esp_err_t prov_get_ap_handler(httpd_req_t *req)
-{
-    return submit_async_req(req, async_prov_get_ap_handler);
-}
-
-
 static esp_err_t prov_get_data_handler(httpd_req_t *req)
 {
     wifi_config_t wconfig;
@@ -187,11 +136,6 @@ static esp_err_t prov_get_data_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-void on_scan_done(void *arg, esp_event_base_t event_base, int event_id, void *event_data)
-{
-    xEventGroupSetBits(scan_event_group, SCAN_DONE_EVENT);
-}
-
 void on_prov_event(void *arg, esp_event_base_t event_base, int event_id, void *event_data)
 {
     if (event_id == PROV_COMPLETE)
@@ -210,15 +154,11 @@ void on_prov_event(void *arg, esp_event_base_t event_base, int event_id, void *e
 
 void provision_init()
 {
-    scan_event_group = xEventGroupCreate();
-    //TODO: Must also reset this when rescanning
     ESP_LOGI(TAG, "Provisioning Start");
     ESP_ERROR_CHECK(esp_event_handler_register(PROV_EVENT, PROV_COMPLETE, &on_prov_event, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &on_scan_done, NULL));
 
     start_webserver();
     register_uri("/", HTTP_GET, prov_get_handler);
     register_uri("/data", HTTP_POST, prov_post_handler);
     register_uri("/data", HTTP_GET, prov_get_data_handler);
-    register_uri("/ap", HTTP_GET, prov_get_ap_handler);
 }

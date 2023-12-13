@@ -60,16 +60,6 @@
             background-color: #D74F45;
         }
 
-        table, th, td {
-            border: 1px solid #B2C5C0;
-            padding: 10px;
-        }
-        table {
-            width: 500px;
-            margin: auto;
-            border-collapse: collapse;
-        }
-
         input[type=checkbox]{
             height: 0;
             width: 0;
@@ -159,21 +149,6 @@
 
         }
 
-        function wifiScan() {
-            const xhr = new XMLHttpRequest();
-
-            xhr.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    el = document.getElementById("scanlist");
-                    let content = "<tr><th>AP list</th></tr>";
-                    content+=JSON.parse(xhr.responseText).ap.map(x => "<tr><td>" + x + "</td></tr>").reduce((acc, cur) => acc + cur);
-                    el.innerHTML = content;
-                }
-            }
-            xhr.open("GET", "/ap");
-            xhr.send();
-        }
-
         function fetchConfig() {
             const xhr = new XMLHttpRequest();
 
@@ -186,6 +161,8 @@
                     document.getElementById("remote_server").value=config.config.remote_server;
                     document.getElementById("dhcp").checked=config.config.dhcp;
                     document.getElementById("active").checked=config.config.active;
+                    on_dhcp_change(document.getElementById("dhcp"));
+                    on_active_change(document.getElementById("active"));
                 }
             }
             xhr.open("GET", "/data");
@@ -193,7 +170,6 @@
         }
 
         function init() {
-            wifiScan();
             fetchConfig();
         }
 
@@ -219,20 +195,6 @@
 
 <body onload="init()">
     <div class="content">
-        <div>
-            <table id="scanlist">
-                <tr>
-                    <th>AP list</th>
-                </tr>
-                <tr>
-                    <td><div class="loader"></div></td>
-                </tr>
-            </table>
-
-        </div>
-        <br/>
-        <br/>
-        <br/>
         SSID
         <input id="ssid" value="" /><br /><br />
         Password
