@@ -1,16 +1,14 @@
 # TODO:  
-    add websocket in server
-    Use http async handlers
-    outgoing websocket connection
     webpage
-        implement all API calls
+        live pins view with websocket
+    outgoing websocket connection
 
-    Change UDP magic for OTA to a rest command
-    what to monitor on nodes?
-        temperature sensor?
-        List of AP?
-        light sensor?
-        atmospheric pressure?
+
+    analog inputs config
+    Sensors (i2c?)
+        temperature sensor
+        List of AP
+        atmospheric pressure
 
 
 
@@ -71,4 +69,4 @@ curl http://192.168.1.46/pins -d '{"outputs":[13,14], "inputs":[22,23]}'
 # API
  Delete wifi credentials and restart, dropping you in provision mode: curl -vvv http://192.168.1.45/restart -X DELETE
  Restart: curl -vvv http://192.168.1.45/restart -X POST
- Provision: curl http://192.168.4.1/data -d '{"wifi":{"ssid":"<SSID>", "password":"<PASSWORD>"}, "config":{"ip":"192.168.1.46", "gw":"192.168.1.1", "dhcp":true. "active":false}}'
+ Provision: curl http://192.168.4.1/data -d '{"wifi":{"ssid":"<SSID>", "password":"<PASSWORD>"}, "config":{"ip":"192.168.1.46", "gw":"192.168.1.1", "dhcp":false, "active":false}}'

@@ -68,6 +68,5 @@ void app_main(void)
     }
 
     wait_wifi_connected();
-    ota_start_listening();
     start_api();
 }

@@ -47,12 +47,12 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-void start_ota_upgrade()
+void start_ota_upgrade(const char *upgrade_url)
 {
     ESP_LOGI(TAG, "Starting OTA Upgrade");
 
     esp_http_client_config_t config = {
-        .url = UPGRADE_URL,
+        .url = upgrade_url,
     };
     esp_https_ota_config_t ota_config = {
         .http_config = &config,
@@ -67,35 +67,6 @@ void start_ota_upgrade()
     {
         ESP_LOGE(TAG, "Firmware upgrade failed");
     }
-}
-
-void upgrade_udp_command_server(void *params)
-{
-    struct sockaddr_in dest_addr;
-    char rx_buffer[128];
-
-    struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
-    dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
-    dest_addr_ip4->sin_family = AF_INET;
-    dest_addr_ip4->sin_port = htons(242);
-
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-    bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-    while (1)
-    {
-        int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, NULL, NULL);
-        if (len != strlen(MAGIC_OTA))
-            break;
-        if (strncmp(rx_buffer, MAGIC_OTA, strlen(MAGIC_OTA)))
-            break;
-        start_ota_upgrade();
-    }
-}
-
-void ota_start_listening()
-{
-    // Create the UDP server that will listen for a signal to start an OTA upgrade
-    xTaskCreate(upgrade_udp_command_server, "udp_server", 4096, NULL, 5, NULL);
 }
 
 void ota_mark_good()

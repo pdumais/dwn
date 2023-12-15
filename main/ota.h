@@ -1,4 +1,4 @@
 #pragma once
 
-void ota_start_listening();
+void start_ota_upgrade(const char *upgrade_url);
 void ota_mark_good();

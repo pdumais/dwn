@@ -11,6 +11,7 @@
 #include "cJSON.h"
 #include "nvs_flash.h"
 #include "nvs.h"
+#include "ota.h"
 
 #include "http_server.h"
 #include "common.h"
@@ -21,7 +22,7 @@
 
 static const char *TAG = "api_c";
 
-// curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "configpins", "params": {"outputs":[13,14], "inputs":[22,23]}, "id": "1"}'
+// curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "configpins", "params": {"outputs":[{"pin":13, "maxon":0}, {"pin":14, "autooff":0}], "inputs":[22,23]}, "id": "1"}'
 static esp_err_t post_pins_handler(cJSON *params)
 {
     const cJSON *pin;
@@ -37,10 +38,12 @@ static esp_err_t post_pins_handler(cJSON *params)
     }
     cJSON_ArrayForEach(pin, cJSON_GetObjectItemCaseSensitive(params, "outputs"))
     {
-        int pin_number = pin->valueint;
+        int pin_number = cJSON_GetObjectItemCaseSensitive(pin, "pin")->valueint;
+        int maxon = cJSON_GetObjectItemCaseSensitive(pin, "maxon")->valueint;
         if (pin_number >= 0 && pin_number < sizeof(pins_config.pins))
         {
             pins_config.pins[pin_number] = PIN_OUTPUT;
+            pins_config.max_on_time[pin_number] = maxon;
         }
     }
 
@@ -48,14 +51,14 @@ static esp_err_t post_pins_handler(cJSON *params)
     nvs_handle_t nvs_h;
     size_t data_size = sizeof(pins_config);
     ESP_ERROR_CHECK(nvs_open("storage", NVS_READWRITE, &nvs_h));
-    nvs_set_blob(nvs_h, "pins", &pins_config, data_size);
+    esp_err_t err = nvs_set_blob(nvs_h, "pins", &pins_config, data_size);
+    ESP_LOGI(TAG, "Writing to NVS returned %04X", err);
     ESP_ERROR_CHECK(nvs_commit(nvs_h));
     nvs_close(nvs_h);
 
     gpio_config_pins();
     return ESP_OK;
 }
-
 
 static esp_err_t set_pin_handler(cJSON *params)
 {
@@ -102,20 +105,16 @@ static void restart_handler(cJSON *params)
     esp_restart();
 }
 
+// curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "ota", "params": {"upgrade_url": "http://192.168.1.3:8113/dwn.bin"}, "id": "1"}'
+static void ota_handler(cJSON *params)
+{
+    cJSON *server = cJSON_GetObjectItem(params, "upgrade_url");
+    start_ota_upgrade(server->valuestring);
+}
+
 // curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "status", "params": {}, "id": "1"}'
 static esp_err_t get_status_handler(cJSON *ret)
 {
-    cJSON *arr = cJSON_CreateArray();
-    uint8_t *pins = get_pins_status();
-    for (int i = 0; i < PIN_COUNT; i++)
-    {
-        if (pins[i] != 0)
-        {
-            cJSON *p = cJSON_CreateNumber(i);
-            cJSON_AddItemToArray(arr, p);
-        }
-    }
-
     cJSON_AddItemToObject(ret, "device", cJSON_CreateString("DWN"));
 
     esp_chip_info_t chip_info;
@@ -140,12 +139,30 @@ static esp_err_t get_status_handler(cJSON *ret)
              mac[3], mac[4], mac[5]);
     cJSON_AddItemToObject(ret, "mac", cJSON_CreateString(str));
 
+    nvs_handle_t nvs_h;
+    pins_config_t *pins_config = gpio_get_pins_config();
+
+    cJSON *arr = cJSON_CreateArray();
+    for (int i = 0; i < PIN_COUNT; i++)
+    {
+        cJSON *pobj = cJSON_CreateObject();
+        cJSON_AddItemToObject(pobj, "mode", cJSON_CreateNumber(pins_config->pins[i]));
+        cJSON_AddItemToObject(pobj, "maxon", cJSON_CreateNumber(pins_config->max_on_time[i]));
+        cJSON_AddItemToArray(arr, pobj);
+    }
+    cJSON_AddItemToObject(ret, "pins", arr);
+
     return ESP_OK;
 }
 
 int jsonrpc_handler(const char *method, cJSON *params, cJSON *ret)
 {
-    #define RUN_HANDLER(_m, _h) if (!strcmp(method, _m)) {_h; return 0;}
+#define RUN_HANDLER(_m, _h)  \
+    if (!strcmp(method, _m)) \
+    {                        \
+        _h;                  \
+        return 0;            \
+    }
 
     RUN_HANDLER("restart", restart_handler(params))
     RUN_HANDLER("getpins", get_pins_handler(ret))
@@ -153,14 +170,56 @@ int jsonrpc_handler(const char *method, cJSON *params, cJSON *ret)
     RUN_HANDLER("clearpin", clear_pin_handler(params))
     RUN_HANDLER("status", get_status_handler(ret))
     RUN_HANDLER("configpins", post_pins_handler(params))
+    RUN_HANDLER("ota", ota_handler(params))
 
     return -1;
 }
 
+void on_gpio_high(void *arg, esp_event_base_t event_base, int event_id, void *event_data)
+{
+    int pin = ((int *)event_data)[0];
+    ESP_LOGI(TAG, "Pin High %i", pin);
 
+    // When pin is high (3.3v), it is not being asserted
+    char str[256];
+    sprintf(str, "{\"event\":\"pin\", \"state\":false, \"pin\": %i}", pin);
+    broadcast_ws(str);
+}
+
+void on_gpio_low(void *arg, esp_event_base_t event_base, int event_id, void *event_data)
+{
+    int pin = ((int *)event_data)[0];
+    ESP_LOGI(TAG, "Pin Low %i", pin);
+
+    // When pin is low (0v), it is being asserted to ground
+    char str[256];
+    sprintf(str, "{\"event\":\"pin\", \"state\":true, \"pin\": %i}", pin);
+    broadcast_ws(str);
+}
+
+static esp_err_t html_handler(httpd_req_t *req)
+{
+    extern const unsigned char html_start[] asm("_binary_index_html_start");
+    extern const unsigned char html_end[] asm("_binary_index_html_end");
+    const size_t html_size = (html_end - html_start);
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_send(req, (const char *)html_start, html_size);
+    return ESP_OK;
+}
 
 void start_api()
 {
     start_webserver();
+    init_ws();
     register_jsonrpc_handler(jsonrpc_handler);
+    register_uri("/", HTTP_GET, html_handler);
+
+    ESP_ERROR_CHECK(esp_event_handler_register(GPIO_EVENT, GPIO_UP, &on_gpio_high, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(GPIO_EVENT, GPIO_DOWN, &on_gpio_low, NULL));
+
+    /*while (1)
+    {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        broadcast_ws("Meow");
+    }*/
 }
