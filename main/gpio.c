@@ -6,6 +6,7 @@
 #include <esp_event_base.h>
 #include "gpio.h"
 #include "common.h"
+#include "driver/i2c.h"
 
 ESP_EVENT_DEFINE_BASE(GPIO_EVENT);
 
@@ -81,6 +82,7 @@ void input_pin_check(void *arg)
 			is1sec = false;
 		}
 
+		// TODO: also check analog inputs. Send a different message
 		for (int i = 0; i < PIN_COUNT; i++)
 		{
 
@@ -121,6 +123,8 @@ void input_pin_check(void *arg)
 
 void gpio_config_pins()
 {
+	// TOOD: should suspend the pin_check task in case it gets run on the 2nd CPU
+
 	for (int i = 0; i < PIN_COUNT; i++)
 	{
 		current_status[i] = 0;
@@ -199,9 +203,41 @@ void gpio_config_pins()
 	gpio_config(&o_conf);
 }
 
+static esp_err_t i2c_master_init(void)
+{
+	/*
+#define I2C_MASTER_SDA_IO 8
+#define I2C_MASTER_SCL_IO 9
+#define I2C_MASTER_NUM I2C_NUMBER(I2C_NUM_0)
+#define I2C_MASTER_FREQ_HZ 400000
+#define I2C_MASTER_TX_BUF_DISABLE 0
+#define I2C_MASTER_RX_BUF_DISABLE 0
+
+	int i2c_master_port = I2C_MASTER_NUM;
+	i2c_config_t conf = {
+		.mode = I2C_MODE_MASTER,
+		.sda_io_num = I2C_MASTER_SDA_IO,
+		.sda_pullup_en = GPIO_PULLUP_ENABLE,
+		.scl_io_num = I2C_MASTER_SCL_IO,
+		.scl_pullup_en = GPIO_PULLUP_ENABLE,
+		.master.clk_speed = I2C_MASTER_FREQ_HZ,
+	};
+
+	esp_err_t err = i2c_param_config(i2c_master_port, &conf);
+	if (err != ESP_OK)
+	{
+		return err;
+	}
+	return i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
+	*/
+	return ESP_OK;
+}
+
 void dwn_gpio_init()
 {
 	gpio_config_pins();
+
+	ESP_ERROR_CHECK(i2c_master_init());
 
 	xTaskCreate(input_pin_check, "input_check", 4096, NULL, 5, NULL);
 }

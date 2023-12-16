@@ -13,8 +13,7 @@
             dhcp = document.getElementById("dhcp").checked;
             active = document.getElementById("active").checked;
             ipregex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-            if (!dhcp)
-            {
+            if (!dhcp) {
                 if (!(ipregex.test(ip))) {
                     alert("Invalid IP address");
                     return;
@@ -24,8 +23,7 @@
                     return;
                 }
             }
-            if (active)
-            {
+            if (active) {
                 if (!(ipregex.test(remote_server))) {
                     alert("Invalid IP address");
                     return;
@@ -59,11 +57,11 @@
                 if (this.readyState == 4 && this.status == 200) {
                     config = JSON.parse(xhr.responseText)
                     document.getElementById("ssid").value = config.wifi.ssid;
-                    document.getElementById("ip").value=config.config.ip;
-                    document.getElementById("gw").value=config.config.gw;
-                    document.getElementById("remote_server").value=config.config.remote_server;
-                    document.getElementById("dhcp").checked=config.config.dhcp;
-                    document.getElementById("active").checked=config.config.active;
+                    document.getElementById("ip").value = config.config.ip;
+                    document.getElementById("gw").value = config.config.gw;
+                    document.getElementById("remote_server").value = config.config.remote_server;
+                    document.getElementById("dhcp").checked = config.config.dhcp;
+                    document.getElementById("active").checked = config.config.active;
                     on_dhcp_change(document.getElementById("dhcp"));
                     on_active_change(document.getElementById("active"));
                 }
@@ -98,25 +96,34 @@
 
 <body onload="init()">
     <div class="content">
-        SSID
-        <input id="ssid" value="" /><br /><br />
-        Password
-        <input id="password" value="" /><br /><br />
-        Enable DHCP
-        <input type="checkbox" id="dhcp" onchange="on_dhcp_change(this)"/><label for="dhcp">DHCP</label>
-        <div id="static_config">
-            Static IP
-            <input id="ip" value="" /><br /><br />
-            Gateway
-            <input id="gw" value="" /><br /><br />
+        <div class="pins" style="height:550px; display:block">
+
+            <div>SSID</div>
+            <input id="ssid" value="" /><br /><br />
+            <div>Password</div>
+            <input id="password" value="" /><br /><br />
+            <div style="margin-bottom: 15px;display:flex;align-items:center">
+                Enable DHCP
+                <input type="checkbox" id="dhcp" onchange="on_dhcp_change(this)" /><label for="dhcp">DHCP</label>
+            </div>
+            <div id="static_config">
+                <div>Static IP</div>
+                <input id="ip" value="" /><br /><br />
+                <div>Gateway</div>
+                <input id="gw" value="" /><br /><br />
+            </div>
+            <div style="margin-bottom: 15px;display:flex;align-items:center">
+                Enable Active mode
+                <input type="checkbox" id="active" onchange="on_active_change(this)" /><label
+                    for="active">active</label>
+            </div>
+
+            <div id="active_mode" style="display:none">
+                <div>Remote server</div>
+                <input id="remote_server" value="" /><br /><br />
+            </div>
+            <button onclick="onSubmit()">SUBMIT</button>
         </div>
-        Enable Active mode
-        <input type="checkbox" id="active" onchange="on_active_change(this)"/><label for="active">active</label>
-        <div id="active_mode" style="display:none">
-            Remote server
-            <input id="remote_server" value="" /><br /><br />
-        </div>
-        <button onclick="onSubmit()">SUBMIT</button>
     </div>
 </body>
 

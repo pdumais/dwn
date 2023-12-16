@@ -160,6 +160,7 @@ static esp_err_t ws_handler(httpd_req_t *req)
     uint8_t buf[256] = {0};
     httpd_ws_frame_t pkt;
     pkt.payload = buf;
+
     httpd_ws_recv_frame(req, &pkt, sizeof(buf) - 1);
     if (!pkt.len)
         return ESP_FAIL;

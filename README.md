@@ -1,22 +1,16 @@
 # TODO:  
-    webpage
-        live pins view with websocket
+    analog inputs config
+    i2c driver
+    BME280 driver
     outgoing websocket connection
 
-
-    analog inputs config
-    Sensors (i2c?)
-        temperature sensor
-        List of AP
-        atmospheric pressure
-
-
+    rest query to report List of AP
 
     pcb with all the switches and terminals. Then replace garage door controller
+        connector for BME
         wroom32 socket
         screw terminals
-        3 LEDs
-        space for a relay?
+        3 LEDs (general purpose, leave disconnected if not needed)
         DIN mount holes
         1 button for prov
         reset button

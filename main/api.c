@@ -22,36 +22,35 @@
 
 static const char *TAG = "api_c";
 
-// curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "configpins", "params": {"outputs":[{"pin":13, "maxon":0}, {"pin":14, "autooff":0}], "inputs":[22,23]}, "id": "1"}'
+// curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "configpins", "params": {"pins":[{"pin":16, "mode":1, "maxon":0}, {"pin":14, "mode":2, "maxon":0}]}, "id": "1"}'
 static esp_err_t post_pins_handler(cJSON *params)
 {
     const cJSON *pin;
-    pins_config_t pins_config = {PIN_NONE};
+    pins_config_t *pins_config = gpio_get_pins_config();
 
-    cJSON_ArrayForEach(pin, cJSON_GetObjectItemCaseSensitive(params, "inputs"))
-    {
-        int pin_number = pin->valueint;
-        if (pin_number >= 0 && pin_number < sizeof(pins_config.pins))
-        {
-            pins_config.pins[pin_number] = PIN_INPUT;
-        }
-    }
-    cJSON_ArrayForEach(pin, cJSON_GetObjectItemCaseSensitive(params, "outputs"))
+    cJSON_ArrayForEach(pin, cJSON_GetObjectItemCaseSensitive(params, "pins"))
     {
         int pin_number = cJSON_GetObjectItemCaseSensitive(pin, "pin")->valueint;
-        int maxon = cJSON_GetObjectItemCaseSensitive(pin, "maxon")->valueint;
-        if (pin_number >= 0 && pin_number < sizeof(pins_config.pins))
+        if (pin_number < 0 || pin_number >= PIN_COUNT)
         {
-            pins_config.pins[pin_number] = PIN_OUTPUT;
-            pins_config.max_on_time[pin_number] = maxon;
+            return ESP_FAIL;
         }
+
+        int mode = cJSON_GetObjectItemCaseSensitive(pin, "mode")->valueint;
+        int maxon = 0;
+        if (mode == PIN_OUTPUT)
+        {
+            maxon = cJSON_GetObjectItemCaseSensitive(pin, "maxon")->valueint;
+        }
+        pins_config->pins[pin_number] = mode;
+        pins_config->max_on_time[pin_number] = maxon;
     }
 
     // Store config in NVS
     nvs_handle_t nvs_h;
     size_t data_size = sizeof(pins_config);
     ESP_ERROR_CHECK(nvs_open("storage", NVS_READWRITE, &nvs_h));
-    esp_err_t err = nvs_set_blob(nvs_h, "pins", &pins_config, data_size);
+    esp_err_t err = nvs_set_blob(nvs_h, "pins", pins_config, data_size);
     ESP_LOGI(TAG, "Writing to NVS returned %04X", err);
     ESP_ERROR_CHECK(nvs_commit(nvs_h));
     nvs_close(nvs_h);
@@ -83,6 +82,7 @@ static void get_pins_handler(cJSON *ret)
     {
         if (pins[i] != 0)
         {
+            // TODO: must return whole list with their analog/digital value
             cJSON *p = cJSON_CreateNumber(i);
             cJSON_AddItemToArray(arr, p);
         }
@@ -219,7 +219,7 @@ void start_api()
 
     /*while (1)
     {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        broadcast_ws("Meow");
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        broadcast_ws("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}");
     }*/
 }

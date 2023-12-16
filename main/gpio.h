@@ -6,6 +6,7 @@
 #define PIN_NONE 0
 #define PIN_INPUT 1
 #define PIN_OUTPUT 2
+#define PIN_ANALOG 3
 #define PIN_RESERVED 0x80
 typedef struct
 {

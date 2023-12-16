@@ -12,36 +12,39 @@
 }
 
 .pins {
-    width: 100%;
-    min-width: 600px;
+    min-width: 400px;
     max-width: 1200px;
     height: 40px;
     padding: 5px;
-    margin-right: 10px;
+    margin: auto;
     margin-bottom: 10px;
     text-align: left;
     display: flex;
-    background-color: #f8f7fb;
+    background-color: #f3f3f3;
     border-radius: 5px;
     align-items: center;
     box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.pinsheader {
+    text-align: center;
 }
 
 .pinscol1 {
     padding-left: 15px;
     float: left;
     width: 5%;
-
 }
 
 .pinscol2 {
     float: left;
-    width: 30%;
+    width: 25%;
 }
 
 .pinscol3 {
     float: left;
     width: 20%;
+    text-align: center;
 }
 
 .pinscol4 {
@@ -57,57 +60,27 @@
     padding-right: 15px;
 }
 
-.loader {
-    width: 16px;
-    height: 16px;
-    margin: auto;
-    border-radius: 50%;
-    background-color: #fff;
-    box-shadow: 32px 0 #fff, -32px 0 #fff;
-    position: relative;
-    animation: flash 0.5s ease-out infinite alternate;
-}
-
-@keyframes flash {
-    0% {
-        background-color: #34495e;
-        box-shadow: 32px 0 #FFF2, -32px 0 #FFF;
-    }
-
-    50% {
-        background-color: #FFF;
-        box-shadow: 32px 0 #34495e, -32px 0 #34495e;
-    }
-
-    100% {
-        background-color: #34495e;
-        box-shadow: 32px 0 #FFF, -32px 0 #34495e;
-    }
-}
-
 body {
-    background-color: #E7E7E7;
+    background-color: #8c9197;
     color: #22313f;
-    font-size: large;
-    padding: 25px;
+    padding-top: 25px;
     font-family: Verdana, sans-serif;
+    padding: 10px;
 }
 
 SELECT {
-    border: 1px solid #c7ebee;
+    border: 1px solid #cdd8d9;
     width: 90%;
     height: 40px;
     background-color: #ffffff;
     border-radius: 5px;
-    font-size: large;
 }
 
 INPUT {
     height: 35px;
     padding: 5px;
     width: 90%;
-    border: 1px solid #c7ebee;
-    font-size: larger;
+    border: 1px solid #cdd8d9;
 }
 
 .content {
@@ -115,30 +88,31 @@ INPUT {
     display: block;
 }
 
+
 button {
-    width: 200px;
+    width: 120px;
     height: 40px;
     color: white;
-    border: 0px solid white;
-    font-size: large;
+    background-image: linear-gradient(-180deg, #21d1e3 0%, #00a4bf 100%);
+    border-radius: 5px;
+    box-sizing: border-box;
+    justify-content: center;
+    padding: 10px;
+    text-decoration: none;
+    border: 0;
     cursor: pointer;
-    background-color: #689381;
-    box-shadow: 3px 4px 4px rgba(0, 0, 0, 0.2);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    font-size: large;
 }
 
-button:active {
-    border: 0px solid white;
-    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+button:hover {
+    background-image: linear-gradient(-180deg, #b4f8ff 0%, #78b7c1 100%);
 }
 
-.pinbutton {
-    width: 120px;
-    height: 100%;
-    color: white;
-    border: 0px solid #c7ebee;
-    font-size: large;
-    cursor: pointer;
-}
+
+.pinbutton {}
 
 input[type=checkbox] {
     height: 0;
@@ -151,7 +125,6 @@ label {
     text-indent: -9999px;
     width: 70px;
     height: 30px;
-    margin-bottom: 15px;
     background: grey;
     display: block;
     border-radius: 100px;

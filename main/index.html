@@ -1,9 +1,46 @@
 <html>
 
 <head>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css?a=3">
     <script>
         var pins = [];
+        let socket;
+
+        function connectWebSocket() {
+            const url = "ws://" + window.location.host + "/ws";
+
+            socket = new WebSocket(url);
+
+            socket.onopen = () => {
+                console.log('WebSocket connection opened');
+            };
+
+            socket.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                if (message.event == "pin") {
+                    pins.some(p => {
+                        if (p.num == message.pin) {
+                            p.state = !message.state;
+                            updatePins();
+                            return true;
+                        }
+                        return false;
+                    });
+                }
+            };
+
+            socket.onclose = (event) => {
+                console.log("connection closed");
+                if (!event.wasClean) {
+                    setTimeout(connectWebSocket, 2000);
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.log('WebSocket error:', error);
+            };
+        }
 
         function pintoggle(num, on) {
             const xhr = new XMLHttpRequest();
@@ -56,8 +93,7 @@
                 method: "configpins",
                 id: 1,
                 params: {
-                    outputs: pins.filter(p => (p.num == num ? (newval == 2) : (p.mode == 2))).map(p => { return { pin: p.num, maxon: 0 } }),
-                    inputs: pins.filter(p => (p.num == num ? (newval == 1) : (p.mode == 1))).map(p => p.num)
+                    pins: [{ pin: num, mode: Number(newval), maxon: 0 }]
                 }
             };
             console.log(msg);
@@ -66,14 +102,11 @@
 
         function maxtimeChange(elem, pin) {
             let mt = elem.value;
-            console.log(pin);
-            console.log(mt);
             if (isNaN(mt)) return;
             mt = Number(mt);
 
             let params = {
-                outputs: pins.filter(p => p.mode == 2).map(p => { return { pin: p.num, maxon: (p.num == pin ? mt : p.maxon) } }),
-                inputs: pins.filter(p => p.mode == 1).map(p => p.num)
+                pins: [{ pin: pin, mode: 2, maxon: mt }]
             };
 
             const xhr = new XMLHttpRequest();
@@ -107,13 +140,13 @@
             let state = "";
 
             if (p.mode == 0) {
-                state = "<span style=\"color:#c3c3c3;\">STATE_DISABLED</span>";
+                state = "<span style=\"color:#c3c3c3;\">DISABLED</span>";
             } else if (p.mode == 1) {
-                state = (p.state) ? "<span>STATE_OFF</span>" : "<span style=\"color:#00b7cb;\">STATE_ON</span>";
+                state = (p.state) ? "<span>OFF</span>" : "<span style=\"color:#00b7cb;\">ON</span>";
             } else if (p.mode == 2) {
                 maxtime = "<input onchange=\"maxtimeChange(this, " + p.num + ")\" value=" + p.maxon + " />"
                 button = "<button class=pinbutton onclick=\"pintoggle(" + p.num + "," + !p.state + ")\">Toggle</button>";
-                state = (!p.state) ? "<span>STATE_OFF</span>" : "<span style=\"color:#00b7cb;\">STATE_ON</span>";
+                state = (!p.state) ? "<span>OFF</span>" : "<span style=\"color:#00b7cb;\">ON</span>";
             } else if (p.mode == 3) { // Analog
                 state = "<span>" + p.state + "</span>";
             }
@@ -136,11 +169,11 @@
             })
 
             let rowHeader = "<div class=pins>";
-            rowHeader += "<div class=pinscol1><b>Pin</b></div>";
-            rowHeader += "<div class=pinscol2><b>Mode</b></div>";
-            rowHeader += "<div class=pinscol3><b>State</b></div>";
-            rowHeader += "<div class=pinscol4><b>Failsafe</b></div>";
-            rowHeader += "<div class=pinscol5><b>Actions</b></div>";
+            rowHeader += "<div class=\"pinscol1 pinsheader\"><b>GPIO</b></div>";
+            rowHeader += "<div class=\"pinscol2 pinsheader\"><b>Mode</b></div>";
+            rowHeader += "<div class=\"pinscol3 pinsheader\"><b>State</b></div>";
+            rowHeader += "<div class=\"pinscol4 pinsheader\"><b>Failsafe</b></div>";
+            rowHeader += "<div class=\"pinscol5 pinsheader\"><b>Actions</b></div>";
             rowHeader += "</div>";
 
 
@@ -198,6 +231,7 @@
         function init() {
             getStatus();
             getPins();
+            connectWebSocket();
         }
     </script>
 </head>
@@ -232,19 +266,19 @@
     <div class="pins" style="height:180px; display:block">
         <div style="border-bottom: 1px solid #C7C7C7; padding:10px;margin-top:10px;display:flex">
             <div style="width:20%"><b>Restart Device</b></div>
-            <div style="width:50%"></div>
-            <div style="width:30%;text-align: right;">
+            <div style="width:40%"></div>
+            <div style="width:40%;text-align: right;">
                 <button onclick="restart()">
                     Restart
                 </button>
             </div>
         </div>
-        <div style="padding:10px;margin-top:40px;display:flex">
+        <div style="padding:10px;margin-top:20px;display:flex">
             <div style="width:20%"><b>Firmware Update</b></div>
-            <div style="width:50%"><input style="width:450px" id="firmwarehost"
-                    value="http://192.168.1.3:8113/dwn.bin" />
+            <div style="width:40%; padding-left:5px">
+                <input style="width:200px" id="firmwarehost" value="http://192.168.1.3:8113/dwn.bin" />
             </div>
-            <div style="width:30%;text-align: right;"><button onclick="ota()">Update</button>
+            <div style="width:40%;text-align: right;"><button onclick="ota()">Update</button>
             </div>
         </div>
     </div>
