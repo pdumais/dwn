@@ -59,6 +59,7 @@ static esp_err_t post_pins_handler(cJSON *params)
     return ESP_OK;
 }
 
+// curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "setpin", "params": {"pin": 13}, "id": "1"}'
 static esp_err_t set_pin_handler(cJSON *params)
 {
     int pin_num = cJSON_GetObjectItem(params, "pin")->valueint;
@@ -66,6 +67,7 @@ static esp_err_t set_pin_handler(cJSON *params)
     return ESP_OK;
 }
 
+// curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "clearpin", "params": {"pin": 13}, "id": "1"}'
 static esp_err_t clear_pin_handler(cJSON *params)
 {
     int pin_num = cJSON_GetObjectItem(params, "pin")->valueint;

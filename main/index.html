@@ -2,7 +2,7 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?a=4">
+    <link rel="stylesheet" href="style.css?a=6">
     <script>
         var pins = [];
         let socket;
@@ -184,7 +184,7 @@
 
         function metricBox(title, data) {
             let ret = "<div class=metricbox>";
-            ret += title + ": <span>" + data + "</span>";
+            ret += "<span>" + data + "</span>";
             ret += "</div>";
             return ret;
         }
@@ -196,7 +196,7 @@
             pressure = (pressure == -1) ? "--" : (pressure / 1000).toFixed(1) + " kPa";
             hum = (hum == -1) ? "--" : hum + " %";
 
-            let row = "<div class=pins><div style=\"display:flex; margin:auto\">";
+            let row = "<div class=pins ><div style=\"display:flex; margin:auto\">";
             row += metricBox("Temperature", temp);
             row += metricBox("Pressure", pressure);
             row += metricBox("Humidity", hum);
