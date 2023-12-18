@@ -1,9 +1,5 @@
 # TODO:  
-    analog inputs config
-    i2c driver
-    BME280 driver
     outgoing websocket connection
-
     rest query to report List of AP
 
     pcb with all the switches and terminals. Then replace garage door controller

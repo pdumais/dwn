@@ -112,7 +112,26 @@ button:hover {
 }
 
 
-.pinbutton {}
+.metricbox {
+    height: 25px;
+    line-height: 25px;
+    border-radius: 10px;
+    padding: 5px 20px 5px 20px;
+    border: 0;
+    margin-left: 20px;
+}
+
+.metricbox span {
+    height: 25px;
+    line-height: 25px;
+    color: white;
+    background-color: #4194ad;
+    border-radius: 10px;
+    padding: 5px 20px 5px 20px;
+    border: 0;
+    margin-left: 20px;
+}
+
 
 input[type=checkbox] {
     height: 0;

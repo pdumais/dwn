@@ -1,0 +1,7 @@
+.vscode
+*.bak
+build
+*.swp
+*.bin
+sdkconfig.defaults
+sdkconfig.old

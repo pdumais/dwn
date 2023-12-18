@@ -148,15 +148,15 @@ void gpio_config_pins()
 	// Valid for ESP32-S3
 	pins_config.pins[0] = PIN_RESERVED;
 	pins_config.pins[3] = PIN_RESERVED;
-	pins_config.pins[8] = PIN_RESERVED;	 // SDA
+	pins_config.pins[8] = PIN_RESERVED;
 	pins_config.pins[9] = PIN_RESERVED;	 // SCL
 	pins_config.pins[19] = PIN_RESERVED; // uart0
 	pins_config.pins[20] = PIN_RESERVED; // uart10
 	pins_config.pins[17] = PIN_RESERVED; // uart1
 	pins_config.pins[18] = PIN_RESERVED; // uart1
 	pins_config.pins[21] = PIN_RESERVED;
-	pins_config.pins[22] = PIN_RESERVED;
-	pins_config.pins[23] = PIN_RESERVED;
+	pins_config.pins[22] = PIN_RESERVED; // SCL
+	pins_config.pins[23] = PIN_RESERVED; // SDA
 	pins_config.pins[24] = PIN_RESERVED;
 	pins_config.pins[25] = PIN_RESERVED;
 	pins_config.pins[26] = PIN_RESERVED;
@@ -201,6 +201,19 @@ void gpio_config_pins()
 	o_conf.pull_up_en = 1;
 	o_conf.pull_down_en = 0;
 	gpio_config(&o_conf);
+
+	i2c_config_t i2c_cfg = {
+		.mode = I2C_MODE_MASTER,
+		.sda_io_num = GPIO_NUM_23,
+		.scl_io_num = GPIO_NUM_22,
+		.sda_pullup_en = false,
+		.scl_pullup_en = false,
+
+		.master = {
+			.clk_speed = 100000}};
+
+	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &i2c_cfg));
+	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
 }
 
 static esp_err_t i2c_master_init(void)

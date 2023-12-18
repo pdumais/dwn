@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-
 #include <freertos/FreeRTOS.h>
 
 #include <esp_log.h>
@@ -17,6 +16,7 @@
 #include "common.h"
 #include "api.h"
 #include "gpio.h"
+#include "sensors.h"
 
 // idf.py add-dependency "espressif/esp_websocket_client^1.0.0"
 
@@ -111,6 +111,15 @@ static void ota_handler(cJSON *params)
     cJSON *server = cJSON_GetObjectItem(params, "upgrade_url");
     start_ota_upgrade(server->valuestring);
 }
+// curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "climate", "params": {}, "id": "1"}'
+static esp_err_t get_climate_handler(cJSON *ret)
+{
+    cJSON_AddItemToObject(ret, "temperature", cJSON_CreateNumber(get_temperature()));
+    cJSON_AddItemToObject(ret, "pressure", cJSON_CreateNumber(get_pressure()));
+    cJSON_AddItemToObject(ret, "humidity", cJSON_CreateNumber(get_humidity()));
+
+    return ESP_OK;
+}
 
 // curl http://192.168.1.46:/jsonrpc -d '{"jsonrpc": "2.0", "method": "status", "params": {}, "id": "1"}'
 static esp_err_t get_status_handler(cJSON *ret)
@@ -151,6 +160,7 @@ static esp_err_t get_status_handler(cJSON *ret)
         cJSON_AddItemToArray(arr, pobj);
     }
     cJSON_AddItemToObject(ret, "pins", arr);
+    get_climate_handler(ret);
 
     return ESP_OK;
 }
@@ -171,6 +181,7 @@ int jsonrpc_handler(const char *method, cJSON *params, cJSON *ret)
     RUN_HANDLER("status", get_status_handler(ret))
     RUN_HANDLER("configpins", post_pins_handler(params))
     RUN_HANDLER("ota", ota_handler(params))
+    RUN_HANDLER("climate", get_climate_handler(ret))
 
     return -1;
 }
@@ -217,6 +228,7 @@ void start_api()
     ESP_ERROR_CHECK(esp_event_handler_register(GPIO_EVENT, GPIO_UP, &on_gpio_high, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(GPIO_EVENT, GPIO_DOWN, &on_gpio_low, NULL));
 
+    init_sensors();
     /*while (1)
     {
         vTaskDelay(5000 / portTICK_PERIOD_MS);

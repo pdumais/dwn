@@ -2,7 +2,7 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?a=3">
+    <link rel="stylesheet" href="style.css?a=4">
     <script>
         var pins = [];
         let socket;
@@ -163,6 +163,7 @@
         }
 
         function updatePins() {
+            let pinstable = document.getElementById("pinstable");
             console.log(pins);
             let rows = pins.map((p) => {
                 return createPinBox(p);
@@ -181,9 +182,32 @@
             pinstable.innerHTML = rows.reduce((acc, current) => acc + current);
         }
 
+        function metricBox(title, data) {
+            let ret = "<div class=metricbox>";
+            ret += title + ": <span>" + data + "</span>";
+            ret += "</div>";
+            return ret;
+        }
+
+
+        function updateClimate(temp, pressure, hum) {
+            let climate = document.getElementById("climate");
+            temp = (temp == -1) ? "--" : temp.toFixed(1) + "&#176;C";
+            pressure = (pressure == -1) ? "--" : (pressure / 1000).toFixed(1) + " kPa";
+            hum = (hum == -1) ? "--" : hum + " %";
+
+            let row = "<div class=pins><div style=\"display:flex; margin:auto\">";
+            row += metricBox("Temperature", temp);
+            row += metricBox("Pressure", pressure);
+            row += metricBox("Humidity", hum);
+            row += "</div></div>";
+
+
+            climate.innerHTML = row;
+        }
+
         function getPins() {
             const xhr = new XMLHttpRequest();
-            let pinstable = document.getElementById("pinstable");
 
             xhr.onreadystatechange = function () {
                 if (this.readyState == 4 && this.status == 200) {
@@ -221,6 +245,7 @@
                     });
 
                     updatePins();
+                    updateClimate(status.temperature, status.pressure, status.humidity);
                 }
             }
             xhr.open("POST", "/jsonrpc");
@@ -285,6 +310,10 @@
 
     </div>
     </div>
+    <br /><br />
+    <div id="climate">
+    </div>
+    <br /><br />
     <div id="pinstable">
     </div>
 </body>
